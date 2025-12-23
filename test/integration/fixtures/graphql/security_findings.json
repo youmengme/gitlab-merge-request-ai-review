@@ -1,0 +1,54 @@
+{
+  "project": {
+    "mergeRequest": {
+      "title": "Add sample js file",
+      "hasSecurityReports": true,
+      "findingReportsComparer": {
+        "status": "PARSED",
+        "report": {
+          "headReportCreatedAt": "2023-01-09T17:31:23Z",
+          "baseReportCreatedAt": "2022-11-11T20:31:17Z",
+          "baseReportOutOfDate": true,
+          "added": [
+            {
+              "uuid": "35ddec6f-baca-5758-9cd6-00868d524e77",
+              "title": "PGP private key",
+              "description": "PGP private key",
+              "severity": "CRITICAL",
+              "foundByPipelineIid": "2"
+            },
+            {
+              "uuid": "d5e8bbe9-2cc9-53ef-9564-307a7f8d9efe",
+              "title": "Generic API Key",
+              "description": "Generic API Key",
+              "severity": "CRITICAL",
+              "foundByPipelineIid": "2"
+            },
+            {
+              "uuid": "6db1344e-1729-5bd3-8060-274d7d06f31e",
+              "title": "Generic API Key",
+              "description": "Generic API Key",
+              "severity": "CRITICAL",
+              "foundByPipelineIid": "2"
+            },
+            {
+              "uuid": "989e35d2-5f62-547b-a0ff-87dbb9518773",
+              "title": "Twitch API token",
+              "description": "Twitch API token",
+              "severity": "CRITICAL",
+              "foundByPipelineIid": "2"
+            },
+            {
+              "uuid": "afa115c9-47e1-563b-bcd7-a157859fa0b6",
+              "title": "Typeform API token",
+              "description": "Typeform API token",
+              "severity": "CRITICAL",
+              "foundByPipelineIid": "2"
+            }
+          ],
+          "fixed": []
+        }
+      }
+    }
+  }
+}

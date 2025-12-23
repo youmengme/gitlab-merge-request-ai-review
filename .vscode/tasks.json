@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "command": "npm run watch:desktop",
+      "isBackground": true,
+      "group": "build",
+      "problemMatcher": ["$esbuild-watch", "$tsc-watch"],
+      "label": "Build and watch desktop sources",
+      "options": {
+        "env": {
+          "PATH": "/Users/youmeng/.nvm/versions/node/v22.17.0/bin:${env:PATH}"
+        }
+      }
+    },
+    {
+      "type": "npm",
+      "script": "prepare:test:integration",
+      "group": {
+        "kind": "build"
+      },
+      "problemMatcher": ["$tsc"],
+      "label": "npm: prepare:test:integration"
+    },
+    {
+      "type": "npm",
+      "script": "lint",
+      "problemMatcher": ["$eslint-stylish"],
+      "label": "npm: lint",
+      "detail": "eslint --ext .js --ext .ts . && prettier --check '**/*.{js,ts,vue,json}' && npm run --prefix webviews/vue3 lint && npm run --prefix webviews/vue2 lint"
+    },
+    {
+      "label": "Terminate All Tasks",
+      "command": ":",
+      "type": "shell",
+      "problemMatcher": []
+    }
+  ]
+}

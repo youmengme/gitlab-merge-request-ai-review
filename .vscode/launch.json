@@ -1,0 +1,66 @@
+// A launch configuration that launches the extension inside a new window
+{
+  "version": "0.1.0",
+  "configurations": [
+    {
+      "name": "Run Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": ["--disable-extensions", "--extensionDevelopmentPath=${workspaceRoot}/dist-desktop"],
+      "outFiles": ["${workspaceFolder}/dist-desktop/**/*.js"],
+      "preLaunchTask": "Build and watch desktop sources",
+      "postDebugTask": "Terminate All Tasks",
+      "env": {
+        "NODE_ENV": "development",
+        "GITLAB_VSCODE_ENV": "development"
+      }
+    },
+    {
+      "name": "Run Extension (without build)",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": ["--disable-extensions", "--extensionDevelopmentPath=${workspaceRoot}/dist-desktop"],
+      "outFiles": ["${workspaceFolder}/dist-desktop/**/*.js"],
+      "env": {
+        "NODE_ENV": "development",
+        "GITLAB_VSCODE_ENV": "development"
+      }
+    },
+    {
+      "name": "Unit Tests",
+      "args": ["-i"],
+      "internalConsoleOptions": "openOnSessionStart",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "request": "launch",
+      "type": "node"
+    },
+    {
+      "name": "Integration Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--disable-extensions",
+        "--disable-workspace-trust",
+        "--extensionDevelopmentPath=${workspaceRoot}/dist-desktop",
+        "--extensionTestsPath=${workspaceRoot}/dist-desktop/test/integration/",
+        "${workspaceRoot}/test_workspace"
+      ],
+      "outFiles": ["${workspaceFolder}/dist-desktop/**/*.js"],
+      "preLaunchTask": "npm: prepare:test:integration"
+    },
+    {
+      "name": "E2E Tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceRoot}/test/e2e/node_modules/@wdio/cli/bin/wdio.js",
+      "cwd": "${workspaceRoot}/test/e2e",
+      "args": ["wdio.conf.js"],
+      "env": {
+        "TEST_GITLAB_TOKEN": "<token>"
+      }
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+# frozen_string_literal: true
+
+EXTENSION_DOCS_BASE_URL = 'https://gitlab.com/gitlab-org/gitlab-vscode-extension/-/blob/main/docs'
+GRAPHQL_TESTING_DOCS = "#{EXTENSION_DOCS_BASE_URL}/developer/testing-strategy.md?ref_type=heads#graphql-operations".freeze
+
+files_with_graphql_operations = `egrep -r -l 'gql\`' src`
+  .split(/$/)
+  .map(&:strip)
+  .reject(&:empty?)
+  .reject do |file|
+     file.end_with?('.test.ts')
+   end
+
+graphql_files = helper.all_changed_files.select do |file|
+  files_with_graphql_operations.include?(file)
+end
+
+return if graphql_files.empty?
+
+helper.labels_to_add << 'GraphQL'
+
+message <<~MARKDOWN
+This merge request adds or changes files that affect GraphQL queries, mutations, or subscriptions.
+Before you request a maintainer review, see the **GraphQL schema review** advice below.
+MARKDOWN
+
+markdown <<~MARKDOWN
+## GraphQL schema review
+
+These files require a maintainer review:
+
+- #{graphql_files.map { |path| "`#{path}`" }.join("\n- ")}
+
+If you added or changed a GraphQL operation, this merge request should:
+
+1. Include fallback behavior for when the GraphQL operation or field is unavailable in certain conditions:
+   - Does the operation use fields available only to Enterprise Edition users?
+   - Which GitLab release was the field introduced in?
+   - What feature flags should be checked before attempting the operation?
+1. Skip sending unsupported operations if a fallback behavior can be provided.
+1. Omit unsupported fields when submitting GraphQL operations.
+1. _Not_ introduce an excessive number of requests each time the operation is invoked.
+1. Add new test coverage which addresses the expected questions, based on the answers to these questions.
+
+For more information, see our [API compatibility documentation](#{GRAPHQL_TESTING_DOCS}).
+MARKDOWN
+
+# vi: set ft=ruby :

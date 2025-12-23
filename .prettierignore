@@ -1,0 +1,12 @@
+package-lock.json
+.history
+.vscode-test
+.vscode-test-web
+/**/dist
+.gitlab-ci.yml
+CHANGELOG.md
+docs/user/custom-queries.md
+dist-desktop/
+dist-browser/
+test_workspace/
+/webviews/vue3/

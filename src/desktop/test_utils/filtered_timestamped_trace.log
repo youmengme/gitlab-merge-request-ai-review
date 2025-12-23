@@ -1,0 +1,43 @@
+Running with gitlab-runner 17.10.0~pre.41.g5c23fd8e (5c23fd8e)
+  on blue-3.saas-linux-small-amd64.runners-manager.gitlab.com/default zxwgkjAP, system ID: s_d5d3abbdfd0a
+  feature flags: FF_TIMESTAMPS:true
+Preparing the "docker+machine" executor
+Using Docker executor with image mcr.microsoft.com/dotnet/core/sdk:latest ...
+Pulling docker image mcr.microsoft.com/dotnet/core/sdk:latest ...
+Using docker image sha256:1e8401d05dea4bdf104418a6e99c3fbbef9db505b98d96188f67d54f493ba448 for mcr.microsoft.com/dotnet/core/sdk:latest with digest mcr.microsoft.com/dotnet/core/sdk@sha256:150d074697d1cda38a0c2185fe43895d84b5745841e9d15c5adba29604a6e4cb ...
+Preparing environment
+Running on runner-zxwgkjap-project-40127262-concurrent-0 via runner-zxwgkjap-s-l-s-amd64-1745355028-fdc93daa...
+Getting source from Git repository
+Fetching changes with git depth set to 20...
+Initialized empty Git repository in /builds/X_Sheep/dotnet-test-ci/.git/
+Created fresh repository.
+Checking out 6a35bae5 as detached HEAD (ref is some-branch)...
+
+Skipping Git submodules setup
+$ git remote set-url origin "${CI_REPOSITORY_URL}" || echo 'Not a git repository; skipping'
+Downloading artifacts
+Downloading artifacts for build (9793131571)...
+Downloading artifacts from coordinator... ok        host=storage.googleapis.com id=9793131571 responseStatus=200 OK token=66_uxyTAS
+Executing "step_script" stage of the job script
+Using docker image sha256:1e8401d05dea4bdf104418a6e99c3fbbef9db505b98d96188f67d54f493ba448 for mcr.microsoft.com/dotnet/core/sdk:latest with digest mcr.microsoft.com/dotnet/core/sdk@sha256:150d074697d1cda38a0c2185fe43895d84b5745841e9d15c5adba29604a6e4cb ...
+$ dotnet run
+██████████████████████████████████████████████████████████████████████████████████████
+██████████████████████████████████████████████████████████████████████████████████████
+██████████████████████████████████████████████████████████████████████████████████████
+
+black    bright black     black    bright black
+red      bright red       red      bright red
+green    bright green     green    bright green
+yellow   bright yellow    yellow   bright yellow
+blue     bright blue      blue     bright blue
+magenta  bright magenta   magenta  bright magenta
+cyan     bright cyan      cyan     bright cyan
+white    bright white     white    bright white
+
+bold dim italic underline
+
+Doing some task... 100%
+Task complete
+Cleaning up project directory and file based variables
+
+Job succeeded

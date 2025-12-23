@@ -1,0 +1,21 @@
+# When adding a group as a code owner, make sure to invite the group to the
+# project here: https://gitlab.com/gitlab-org/gitlab-vscode-extension/-/project_members
+# As described in https://docs.gitlab.com/user/project/codeowners/
+
+# {{{Required Approvals
+
+[Technical Writing] @scawood @marcel.amirault @eread @aqualls @gitlab-org/tw-leadership
+.markdownlint-cli2.yml
+/docs/.vale/
+.vale.ini
+
+# }}}
+
+# {{{Optional Approvals
+
+^[Documentation] @scawood @marcel.amirault @eread @aqualls @gitlab-org/tw-leadership
+/doc/*.txt
+/docs/**/*
+/**/*.md
+
+# }}}

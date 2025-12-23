@@ -1,0 +1,15 @@
+{
+  "name": "commit-lint",
+  "version": "0.0.1",
+  "main": "lint.js",
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@commitlint/config-conventional": "^19.2.2",
+    "@commitlint/format": "^19.0.3",
+    "@commitlint/lint": "^19.2.2",
+    "@commitlint/read": "^19.2.1",
+    "axios": "^1.6.8"
+  }
+}

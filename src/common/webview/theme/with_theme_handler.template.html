@@ -1,0 +1,28 @@
+<script>
+  const vscode = acquireVsCodeApi();
+
+  function getVsCodeCssVariableMap() {
+    const cssVariables = document.documentElement.style;
+    return [...cssVariables].reduce((obj, name) => {
+      obj[name] = cssVariables.getPropertyValue(name);
+      return obj;
+    }, {});
+  }
+
+  function postCurrentTheme() {
+    const cssVariables = getVsCodeCssVariableMap();
+
+    vscode.postMessage({
+      type: '__gl_theme-changed',
+      cssVariables: cssVariables,
+    });
+  }
+
+  window.addEventListener('message', event => {
+    if (event.data.type === '__gl_theme-changed') {
+      postCurrentTheme();
+    }
+  });
+
+  postCurrentTheme();
+</script>

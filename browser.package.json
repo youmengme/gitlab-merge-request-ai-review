@@ -1,0 +1,119 @@
+{
+  "browser": "browser",
+  "contributes": {
+    "configuration": [
+      {
+        "id": "gitlab-config-other",
+        "properties": {
+          "gitlab.duoCodeSuggestions.openTabsContext": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable Open Tabs Context to improve Code Suggestions by sharing context across open tabs"
+          }
+        }
+      }
+    ],
+    "views": {
+      "gitlab-duo": [
+        {
+          "type": "webview",
+          "id": "gl.chatView",
+          "name": "",
+          "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject"
+        }
+      ]
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "gl.openChat",
+          "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && activeViewlet !== workbench.view.extension.gitlab-duo"
+        },
+        {
+          "command": "gl.closeChat",
+          "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && activeViewlet === workbench.view.extension.gitlab-duo"
+        },
+        {
+          "command": "gl.explainSelectedCode",
+          "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && editorHasSelection"
+        },
+        {
+          "command": "gl.generateTests",
+          "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && editorHasSelection"
+        },
+        {
+          "command": "gl.refactorCode",
+          "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && editorHasSelection"
+        },
+        {
+          "command": "gl.fixCode",
+          "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && editorHasSelection"
+        },
+        {
+          "command": "gl.newChatConversation",
+          "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject"
+        }
+      ],
+      "gl.gitlabDuo": [
+        {
+          "command": "gl.explainSelectedCode",
+          "group": "navigation",
+          "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && editorHasSelection"
+        },
+        {
+          "command": "gl.generateTests",
+          "group": "navigation",
+          "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && editorHasSelection"
+        },
+        {
+          "command": "gl.refactorCode",
+          "group": "navigation",
+          "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && editorHasSelection"
+        },
+        {
+          "command": "gl.fixCode",
+          "group": "navigation",
+          "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && editorHasSelection"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "gl.openChat",
+        "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && activeViewlet !== workbench.view.extension.gitlab-duo",
+        "key": "alt+d"
+      },
+      {
+        "command": "gl.closeChat",
+        "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && activeViewlet === workbench.view.extension.gitlab-duo && gitlab:chatFocused",
+        "key": "alt+d"
+      },
+      {
+        "command": "gl.focusChat",
+        "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && activeViewlet === workbench.view.extension.gitlab-duo && !gitlab:chatFocused",
+        "key": "alt+d"
+      },
+      {
+        "command": "gl.explainSelectedCode",
+        "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && editorHasSelection",
+        "key": "alt+e"
+      },
+      {
+        "command": "gl.generateTests",
+        "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && editorHasSelection",
+        "key": "alt+t"
+      },
+      {
+        "command": "gl.refactorCode",
+        "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject && editorHasSelection",
+        "key": "alt+r"
+      },
+      {
+        "command": "gl.newChatConversation",
+        "when": "config.gitlab.duoChat.enabled && gitlab:chatAvailable && gitlab:chatAvailableForProject",
+        "key": "alt+n"
+      }
+    ]
+  },
+  "extensionDependencies": ["gitlab.gitlab-web-ide"]
+}

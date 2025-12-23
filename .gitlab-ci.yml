@@ -1,0 +1,377 @@
+include:
+  # remove the `.latest` from the following templates after 16.0 GitLab release
+  # the `.latest` indicates the "nightly" version of the job definition
+  # when we remove the `.latest`, we'll be using the stable job definition
+  # https://gitlab.com/gitlab-org/gitlab/-/issues/217668#note_1136574790
+  - template: Jobs/SAST.latest.gitlab-ci.yml
+  - template: Jobs/Dependency-Scanning.latest.gitlab-ci.yml
+  - template: Jobs/Secret-Detection.latest.gitlab-ci.yml
+  - component: ${CI_SERVER_FQDN}/gitlab-org/components/danger-review/danger-review@2.1.0
+
+# region: conditions ----------------------------------
+.if-scheduled-e2e: &if-scheduled-e2e
+  if: '$CI_PIPELINE_SOURCE == "schedule" && $RUN_E2E == "true"'
+
+# region: jobs ----------------------------------------
+
+variables:
+  SAST_EXCLUDED_ANALYZERS: "eslint"
+
+# run the pipeline only on MRs, tags, and default branch
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+
+default:
+  tags:
+    - gitlab-org
+  cache:
+    - key:
+        files:
+          - package-lock.json
+          # the cache.key.files field only allows two files, so installing
+          # dependencies for the vue3 webviews (the least often changed) will be a bit less efficient
+          # https://docs.gitlab.com/ci/yaml/#cachekeyfiles
+          # - webviews/vue/package-lock.json
+          - webviews/vue2/package-lock.json
+      paths:
+        - .npm
+
+image: node:22.14.0 # we cannot use slim package as we need git installed for semantic-release
+
+stages:
+  - test
+  - package
+  - publish
+
+no-squash-with-tags:
+  stage: .pre
+  variables:
+    FF_ENABLE_BASH_EXIT_CODE_CHECK: true
+  script:
+    - scripts/no_squash_with_tags.sh
+
+.install npm dependencies:
+  script: &npm_ci
+    - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
+
+package-lock-integrity:
+  stage: test
+  script:
+    - cp package-lock.json package-lock.json.bak
+    - npm install --ignore-scripts
+    - diff package-lock.json package-lock.json.bak || (echo "package-lock.json is out of sync with package.json. Run npm install locally to fix it." && exit 1)
+
+check-docs-markdown:
+  stage: test
+  needs: []
+  image: registry.gitlab.com/gitlab-org/technical-writing/docs-gitlab-com/lint-markdown:alpine-3.22-vale-3.13.0-markdownlint2-0.19.0-lychee-0.21.0
+  script:
+    # Lint prose
+    - vale --minAlertLevel error docs README.md
+    # Lint Markdown
+    - markdownlint-cli2 'docs/**/*.md' README.md CONTRIBUTING.md
+    # Check links
+    - lychee --offline --include-fragments docs/**/*.md walkthroughs/**/*.md *.md
+  except:
+    - schedules
+
+lint:
+  stage: test
+  script:
+    - apt-get update && apt-get install -y git
+    - *npm_ci
+    - git checkout . # the npm install automatically fixes package.json formatting issues, but we need the CI to discover them so we revert any changes
+    - npm run lint
+  except:
+    - schedules
+
+lint-commit:
+  stage: test
+  script:
+    - apt-get update && apt-get install -y git
+    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME $CI_COMMIT_SHA
+    - cd scripts/commit-lint && npm ci
+    - ./lint.sh
+  rules:
+    - if: '$CI_MERGE_REQUEST_IID'
+      when: always
+
+check-ci-variables:
+  stage: test
+  script:
+    - *npm_ci
+    - npm run update-ci-variables
+  allow_failure: true # could be caused by changes in gitlab-org/gitlab repo, not related to current branch
+  rules:
+    - !!merge <<: *if-scheduled-e2e
+      when: never
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - 'src/ci/ci_variables.json'
+        - 'scripts/update_ci_variables.js'
+
+test-unit:
+  stage: test
+  variables:
+    NODE_OPTIONS: "--max-old-space-size=4096"
+  script:
+    - *npm_ci
+    - npm run test:unit -- --coverage
+  artifacts:
+    when: always
+    reports:
+      junit: reports/unit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: reports/cobertura-coverage.xml
+  except:
+    - schedules
+
+test-integration:
+  stage: test
+  variables:
+    DISPLAY: ':99.0'
+  script:
+    - apt-get update
+    - apt-get install -y xvfb libxtst6 libnss3 libgtk-3-0 libxss1 libasound2 libsecret-1-0 libgbm-dev git
+    - *npm_ci
+    - echo $DISPLAY
+    - /usr/bin/Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+    - npm run test:integration
+  except:
+    - schedules
+
+
+test-integration-web:
+  stage: test
+  allow_failure: false
+  image: registry.gitlab.com/gitlab-org/gitlab-web-ide/web-ide-integration-test-runner:main
+  variables:
+    GIT_DEPTH: 1
+    PLAYWRIGHT_GITLAB_URL: 'https://gitlab.com'
+    PLAYWRIGHT_PROJECT_PATH: 'gitlab-org/gitlab-web-ide'
+    PLAYWRIGHT_REPOSITORY_REF: 'main'
+  tags:
+    - saas-linux-medium-amd64
+  script:
+    - *npm_ci
+    - npm run build:browser
+    - git clone --depth 1 https://gitlab.com/gitlab-org/gitlab-web-ide.git
+    - ls
+    - echo $(pwd)
+    - cd gitlab-web-ide
+    - |
+      printf '{ "type": "path", "location": "%s" }' "$(dirname $(pwd))" > "$(pwd)/packages/vscode-extension-gitlab-vscode-extension/gitlab_vscode_extension_version.local.json"
+    - yarn install --immutable
+    - yarn playwright:install
+    - yarn build:example
+    - yarn test:integration tests/integration/web-ide-duo-code-suggestions.test.ts
+  artifacts:
+    when: always
+    paths:
+      - gitlab-web-ide/tests/integration/playwright-report/
+    reports:
+      junit: gitlab-web-ide/tests/integration/playwright-report/junit.xml
+  except:
+    - schedules
+
+
+.shared_windows_runners:
+  tags:
+    - saas-windows-medium-amd64
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-npm
+    paths:
+      - .npm/
+    policy: pull-push
+  before_script:
+    - New-Item -Path "C:\Users\gitlab_runner\AppData\Roaming" -Name "npm" -ItemType "directory"
+    - npm ci --cache .npm --prefer-offline --no-audit --force
+  variables:
+    npm_config_cache: '.npm'
+
+.windows_job:
+  retry: 2
+  extends: .shared_windows_runners
+  rules:
+      - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH  # Always run on main branch
+        when: always
+        allow_failure: false
+      - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"  # Run on merge train
+        when: always
+        allow_failure: false
+      - when: manual  # Optional manual run in all other cases
+        allow_failure: true
+
+test-e2e-windows:
+  extends:
+    - .windows_job
+  stage: test
+  script:
+    - npm run package
+    - cd test/e2e
+    - npm install
+    - npx wdio run ./wdio.conf.js --exclude="./specs/duo_chat.e2e.js"
+  after_script:
+    - |
+      echo "Allure test report:"
+      echo "https://gitlab-org.gitlab.io/-/gitlab-vscode-extension/-/jobs/$env:CI_JOB_ID/artifacts/test/e2e/allure-report/index.html"
+  artifacts:
+    expire_in: 10 days
+    when: always
+    name: gitlab_vscode_extension_e2e_windows_test_results
+    paths:
+      - '**/**/allure-report/*.html'
+      - '**/**/allure-results/*.png'
+      - '**/**/allure-results/*.mp4'
+      - '**/**/json-results/*.json'
+      - '**/**/wdio-logs/*.log'
+
+test-webview:
+  stage: test
+  script:
+    - cd webviews/vue3
+    - *npm_ci
+    - npm run test
+  except:
+    - schedules
+
+test-webview2:
+  stage: test
+  script:
+    - cd webviews/vue2
+    - *npm_ci
+    - npm run test
+  artifacts:
+    when: always
+  except:
+    - schedules
+
+test-browser-build:
+  stage: test
+  script:
+    - npm ci
+    - npm run build:browser
+  except:
+    - schedules
+
+.e2e_base:
+  stage: test
+  before_script:
+    - apt-get update
+    - apt-get install -y xvfb libxtst6 libnss3 libgtk-3-0 libxss1 libasound2 libsecret-1-0 libgbm-dev git sudo default-jre
+    - *npm_ci
+    - npm run package
+    - cd test/e2e
+    - npm install
+  after_script:
+    - |
+      if [ "$E2E_VSCODE_VERSION" != "insiders" ] && [ -z "$E2E_GITLAB_HOST" ]; then
+        cd test/e2e
+        npm install
+        npm run test:e2e:metrics
+      else
+        echo "Skipped sending e2e test metrics since we are using insiders or we are using a host other than the default (gitlab.com)"
+      fi
+    - |
+      echo "Allure test report:"
+      echo "https://gitlab-org.gitlab.io/-/gitlab-vscode-extension/-/jobs/${CI_JOB_ID}/artifacts/test/e2e/allure-report/index.html"
+  artifacts:
+    expire_in: 10 days
+    when: always
+    paths:
+      - '**/**/allure-report/*.html'
+      - '**/**/allure-results/*.png'
+      - '**/**/allure-results/*.mp4'
+      - '**/**/json-results/*.json'
+      - '**/**/wdio-logs/*.log'
+  rules:
+    - !!merge <<: *if-scheduled-e2e
+      when: always
+    - if: '$TEST_GITLAB_TOKEN'
+      when: always
+
+test-e2e:
+  extends: .e2e_base
+  script:
+    - sudo -u node E2E_GITLAB_HOST=$E2E_GITLAB_HOST TEST_GITLAB_TOKEN=$TEST_GITLAB_TOKEN E2E_VSCODE_VERSION=$E2E_VSCODE_VERSION xvfb-run -a npx wdio run ./wdio.conf.js --spec="./specs/!(duo_chat).e2e.js"
+  artifacts:
+    name: gitlab_vscode_extension_e2e_test_results
+
+test-e2e-chat:
+  extends: .e2e_base
+  script:
+    - sudo -u node E2E_GITLAB_HOST=$E2E_GITLAB_HOST TEST_GITLAB_TOKEN=$TEST_GITLAB_TOKEN E2E_VSCODE_VERSION=$E2E_VSCODE_VERSION xvfb-run -a npx wdio run ./wdio.conf.js --spec="./specs/duo_chat.e2e.js"
+  artifacts:
+    name: gitlab_vscode_extension_e2e_chat_test_results
+  allow_failure: true
+
+.package:
+  stage: package
+  script:
+    - *npm_ci
+    - npm run package
+    - PACKAGE_NAME=$(basename "$(ls "dist-desktop"/*.vsix)")
+    - echo "PACKAGE_NAME=${PACKAGE_NAME}" >> package.env
+  artifacts:
+    paths:
+      - 'dist-desktop/*.vsix'
+    reports:
+      dotenv: package.env
+
+
+# We test that packaging works to prevent failed releases
+# Without this task we would only find out packaging errors after tagging a release
+package-test:
+  extends: .package
+  needs: []
+  artifacts:
+    expire_in: 10 days
+  except:
+    - tags
+    - schedules
+
+.publish-pre-release:
+  stage: publish
+  script:
+    - npm ci
+    - npm run semantic-release
+  environment:
+    name: pre-release
+  variables:
+    IS_PRERELEASE: true
+  artifacts:
+    paths:
+      - 'dist-desktop/*.vsix'
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+publish-pre-release::scheduled:
+  extends: .publish-pre-release
+  rules:
+    - if: '$SCHEDULE_TYPE == "PUBLISH_PRE_RELEASE" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH' # SCHEDULE_TYPE CI variable is set in the pipeline schedule
+
+publish-pre-release::manual:
+  extends: .publish-pre-release
+  when: manual
+
+publish-release::manual:
+  stage: publish
+  script:
+    - npm ci
+    - npm run semantic-release
+  environment:
+    name: release
+  artifacts:
+    paths:
+      - 'dist-desktop/*.vsix'
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

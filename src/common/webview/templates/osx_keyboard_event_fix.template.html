@@ -1,0 +1,46 @@
+<script>
+  let lastSourceFrameId = null;
+
+  function execCommand(command) {
+    let messageData;
+
+    if (lastSourceFrameId) {
+      messageData = {
+        command: command,
+        sourceFrameId: lastSourceFrameId
+      };
+      lastSourceFrameId = null;
+    } else {
+      messageData = command;
+    }
+
+    document
+      .getElementById('application')
+      .contentWindow.postMessage({
+        command: 'execCommand',
+        data: messageData
+      }, '*');
+  }
+
+  for (const command of ['copy', 'paste', 'cut']) {
+    document.addEventListener(command, () => {
+      execCommand(command);
+    });
+  }
+
+  document.addEventListener('selectstart', (e) => {
+    execCommand('selectAll');
+    e.preventDefault();
+  });
+
+  window.addEventListener('message', e => {
+    if (e.data.command === 'kbd-event') {
+      /**
+       By storing the ID from the keyboard event, we can attach it to the clipboard
+       * command that fires immediately after, ensuring commands go back to the right iframe.
+       */
+      lastSourceFrameId = e.data.data.sourceFrameId;
+      window.dispatchEvent(new KeyboardEvent('keydown', e.data.data));
+    }
+  });
+</script>

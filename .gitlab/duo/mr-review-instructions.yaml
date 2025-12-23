@@ -1,0 +1,16 @@
+instructions:
+  - name: GraphQL Compatibility Guide
+    fileFilters:
+      - "src/**/*.ts"
+      - "!src/**/*.test.ts"
+    instructions: |
+      1. Review file changes for modified GraphQL operations
+      2. If a GraphQL operation was modified or removed, add a suggestion to including error handling and fallback behavior for when the GraphQL operation or field is unavailable in certain conditions. Ask the author if the following is applicable:
+         - Does the operation use fields available only to Enterprise Edition users?
+         - Which GitLab release was the field introduced in?
+         - What feature flags should be checked before attempting the operation?
+      3. Skip sending unsupported operations when fallback behavior can be provided.
+      4. Omit unsupported fields when submitting GraphQL operations.
+      5. Does not introduce an excessive number of requests each time the operation is invoked.
+      6. Add new test coverage which addresses the expected questions, based on the answers to these questions.
+
