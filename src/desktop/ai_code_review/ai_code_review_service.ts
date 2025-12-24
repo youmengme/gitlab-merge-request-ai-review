@@ -99,45 +99,33 @@ export class AICodeReviewService {
 
     const allComments: ReviewComment[] = [];
     const fileQueue = [...context.diffs];
-    const activePromises = new Set<Promise<void>>();
     let processedCount = 0;
 
-    // 并发处理函数
-    const processNextFile = async (): Promise<void> => {
-      if (fileQueue.length === 0) return;
+    // 创建固定数量的 worker 并循环处理队列，避免 Promise.all 只等待首批任务的问题
+    const workerCount = Math.min(maxConcurrent, fileQueue.length || 0);
+    const workers = Array.from({ length: workerCount }, async () => {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const diff = fileQueue.shift();
+        if (!diff) break;
 
-      const diff = fileQueue.shift()!;
-      const fileIndex = processedCount + 1;
-      processedCount++;
+        const fileIndex = ++processedCount;
 
-      try {
-        log.info(`[File ${fileIndex}/${context.diffs.length}] Starting review of ${diff.filePath}`);
-        const comments = await this.#reviewSingleFileWithRetry(promptTemplate, diff, context, fileIndex);
-        allComments.push(...comments);
-        log.info(`[File ${fileIndex}/${context.diffs.length}] Completed review of ${diff.filePath}: ${comments.length} comments`);
-      } catch (error) {
-        log.error(`[File ${fileIndex}/${context.diffs.length}] Failed to review ${diff.filePath}: ${error}`);
-        // 单个文件失败不影响其他文件
-      }
-    };
-
-    // 启动初始并发任务
-    const initialPromises = [];
-    for (let i = 0; i < Math.min(maxConcurrent, fileQueue.length); i++) {
-      const promise = processNextFile().finally(() => {
-        activePromises.delete(promise);
-        // 当某个任务完成时，启动下一个任务
-        if (fileQueue.length > 0) {
-          const nextPromise = processNextFile();
-          activePromises.add(nextPromise);
+        try {
+          log.info(`[File ${fileIndex}/${context.diffs.length}] Starting review of ${diff.filePath}`);
+          // 我们需要串行等待 AI 调用完成后才能安全地处理下一个文件
+          // eslint-disable-next-line no-await-in-loop
+          const comments = await this.#reviewSingleFileWithRetry(promptTemplate, diff, context, fileIndex);
+          allComments.push(...comments);
+          log.info(`[File ${fileIndex}/${context.diffs.length}] Completed review of ${diff.filePath}: ${comments.length} comments`);
+        } catch (error) {
+          log.error(`[File ${fileIndex}/${context.diffs.length}] Failed to review ${diff.filePath}: ${error}`);
+          // 单个文件失败不影响其他文件
         }
-      });
-      activePromises.add(promise);
-      initialPromises.push(promise);
-    }
+      }
+    });
 
-    // 等待所有任务完成
-    await Promise.all(activePromises);
+    await Promise.all(workers);
 
     log.info(`AI Code Review completed: ${allComments.length} total comments from ${context.diffs.length} files`);
     return {
@@ -216,9 +204,10 @@ export class AICodeReviewService {
 - File: ${diff.filePath}
 - Change Type: ${diff.changeType}
 
-## Code Changes to Review
-
+# 待审查代码
+<changed_code>
 ${diffText}
+</changed_code>
 
 ## Instructions
 Please review the above code changes and provide feedback in the following JSON format:
@@ -236,7 +225,11 @@ Please review the above code changes and provide feedback in the following JSON 
 }
 \`\`\`
 
-Focus only on the changed lines (marked with + or -). Provide specific, actionable feedback for this file only.`;
+Focus only on the changed lines (marked with + or -). Provide specific, actionable feedback for this file only.
+
+# Command
+Now, please start reviewing the above code, use Chinese to reply comment content.
+`;
   }
 
   /**

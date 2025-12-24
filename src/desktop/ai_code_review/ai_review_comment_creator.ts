@@ -20,16 +20,12 @@ export class AIReviewCommentCreator {
     mr: RestMr,
     mrVersion: RestMrVersion,
   ): void {
-    log.info('[AI Review Comment Creator] Initializing comment controller...');
-
     // 创建 CommentController
     this.#commentController = commentControllerProvider.borrowCommentController(
       mr.references.full,
       `AI Review: ${mr.title}`,
       new CommentingRangeProvider(mr, mrVersion),
     );
-
-    log.info(`[AI Review Comment Creator] Comment controller initialized for MR !${mr.iid}`);
   }
 
   /**
@@ -48,22 +44,16 @@ export class AIReviewCommentCreator {
     let successCount = 0;
     let failedCount = 0;
 
-    log.info(`[AI Review Comment Creator] Creating ${comments.length} comment threads...`);
-
     // 顺序创建评论（需要等待每个评论完成）
-    for (const [index, comment] of comments.entries()) {
+    for (const [, comment] of comments.entries()) {
       try {
         // eslint-disable-next-line no-await-in-loop
         await this.#createSingleComment(comment, mr, mrVersion, workspaceRoot);
         successCount += 1;
-        log.info(`[AI Review Comment Creator] Comment ${index + 1}/${comments.length} created successfully`);
       } catch (error) {
         failedCount += 1;
-        log.error(`[AI Review Comment Creator] Failed to create comment ${index + 1}/${comments.length}: ${error}`);
       }
     }
-
-    log.info(`[AI Review Comment Creator] Completed: ${successCount} succeeded, ${failedCount} failed`);
 
     return { successCount, failedCount };
   }
@@ -92,26 +82,9 @@ export class AIReviewCommentCreator {
       console.log(msg);
     };
 
-    logMsg(`[AI Review Comment Creator] ========== Creating comment ==========`);
-
-    if (autoSubmitComments) {
-      logMsg(`[AI Review Comment Creator] Auto-submit enabled: comments will be submitted to GitLab immediately`);
-    } else {
-      logMsg(`[AI Review Comment Creator] Auto-submit disabled: comments will only be shown in VS Code`);
-    }
-
-    logMsg(`[AI Review Comment Creator] File: ${comment.filePath}`);
-    logMsg(`[AI Review Comment Creator] Line: ${comment.lineNumber}`);
-    logMsg(`[AI Review Comment Creator] Severity: ${comment.severity}`);
-    logMsg(`[AI Review Comment Creator] Content preview: ${comment.content.substring(0, 100)}...`);
-
     // 使用新文件（head）的路径和行号
     const { filePath } = comment;
     const commit = mrVersion.head_commit_sha;
-
-    logMsg(`[AI Review Comment Creator] Workspace root: ${workspaceRoot}`);
-    logMsg(`[AI Review Comment Creator] MR ID: ${mr.id}, Project ID: ${mr.project_id}`);
-    logMsg(`[AI Review Comment Creator] Commit SHA: ${commit}`);
 
     // 创建 Review URI
     const reviewUri = toReviewUri({
@@ -124,30 +97,22 @@ export class AIReviewCommentCreator {
       commit,
     });
 
-    logMsg(`[AI Review Comment Creator] Review URI created: ${reviewUri.toString()}`);
 
     // 创建 CommentThread（行号从 0 开始）
     const lineNumber = comment.lineNumber - 1;
     const range = new vscode.Range(lineNumber, 0, lineNumber, 0);
 
-    logMsg(`[AI Review Comment Creator] Creating comment thread at line ${lineNumber} (0-indexed)`);
-
     const thread = this.#commentController.createCommentThread(reviewUri, range, []);
     thread.canReply = true;
 
-    logMsg(`[AI Review Comment Creator] Comment thread created successfully`);
-
     // 格式化评论内容
     const commentText = this.#formatCommentText(comment);
-    logMsg(`[AI Review Comment Creator] Formatted comment text (${commentText.length} chars)`);
 
     // 根据配置决定是否自动提交到 GitLab
     if (autoSubmitComments) {
-      logMsg(`[AI Review Comment Creator] Calling createComment to submit to GitLab...`);
 
       try {
         await createComment({ text: commentText, thread });
-        logMsg(`[AI Review Comment Creator] Comment submitted successfully for ${comment.filePath}:${comment.lineNumber}`);
       } catch (error) {
         const logError = (msg: string) => {
           log.error(msg);
@@ -155,18 +120,12 @@ export class AIReviewCommentCreator {
           console.error(msg);
         };
 
-        logError(`[AI Review Comment Creator] Failed to submit comment for ${comment.filePath}:${comment.lineNumber}`);
-        logError(`[AI Review Comment Creator] Error type: ${error instanceof Error ? error.constructor.name : typeof error}`);
-        logError(`[AI Review Comment Creator] Error message: ${error instanceof Error ? error.message : String(error)}`);
         if (error instanceof Error && error.stack) {
           logError(`[AI Review Comment Creator] Error stack: ${error.stack}`);
         }
         throw error;
       }
     } else {
-      logMsg(`[AI Review Comment Creator] Skipping auto-submit: comment will only be shown in VS Code`);
-      logMsg(`[AI Review Comment Creator] To submit manually: right-click on the comment and select "Submit Comment"`);
-
       // 创建评论但不提交 - 添加到 thread 中供用户手动提交
       try {
         const aiComment: vscode.Comment = {
@@ -176,7 +135,6 @@ export class AIReviewCommentCreator {
           contextValue: 'ai-review-comment',
         };
         thread.comments = [aiComment];
-        logMsg(`[AI Review Comment Creator] Comment created in VS Code for manual review`);
       } catch (error) {
         const logError = (msg: string) => {
           log.error(msg);
@@ -204,7 +162,7 @@ export class AIReviewCommentCreator {
 
     const emoji = severityEmoji[comment.severity] || '💬';
 
-    return `${emoji} [AI Review - ${comment.severity.toUpperCase()}]\n\n${comment.content}`;
+    return `${emoji} [${comment.severity.toUpperCase()}]\n\n${comment.content}`;
   }
 
   /**

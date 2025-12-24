@@ -93,6 +93,24 @@ For a full list of GitLab commands you can run from the VS Code Command Palette,
 - [Command Palette commands](https://docs.gitlab.com/editor_extensions/visual_studio_code/settings/#command-palette-commands).
 - [Extension settings you can configure](https://docs.gitlab.com/editor_extensions/visual_studio_code/settings/#extension-settings).
 
+#### 配置项设置
+
+扩展提供了以下配置项，可在 VS Code 设置中进行配置：
+
+##### AI 代码审查配置
+
+| 配置项 | 类型 | 默认值 | 描述 |
+|--------|------|--------|------|
+| `gitlab.aiCodeReview.openai.model` | `string` | `"gpt-4"` | 用于 AI 代码审查的 OpenAI 模型。可选值：`gpt-4`、`gpt-4-turbo`、`gpt-3.5-turbo` |
+| `gitlab.aiCodeReview.maxConcurrentFiles` | `number` | `5` | 同时进行代码审查的最大文件数量。范围：1-20。较高的值处理速度更快但会消耗更多 API 调用和内存 |
+| `gitlab.aiCodeReview.autoSubmitComments` | `boolean` | `false` | 是否自动将 AI 审查评论提交到 GitLab。当禁用时，评论仅在 VS Code 中显示供手动审查 |
+
+##### 其他配置
+
+| 配置项 | 类型 | 默认值 | 描述 |
+|--------|------|--------|------|
+| `gitlab.debug` | `boolean` | `false` | 启用调试模式，提供更好的堆栈跟踪解析（源映射）和更详细的日志。启用此选项后需要重启扩展 |
+
 ### Browse a repository without cloning
 
 See [Browse a repository in read-only mode](https://docs.gitlab.com/editor_extensions/visual_studio_code/remote_urls/#browse-a-repository-in-read-only-mode) in the GitLab documentation.
